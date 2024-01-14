@@ -32,7 +32,7 @@ start "" "!steam_path!\steam.exe" steam://rungameid/!app_id! --disable-backgroun
 
 :: Only continue if steamwebhelper is running in case steam is updating
 :wait_for_steamwebhelper
-tasklist | findstr /i "steamwebhelper.exe" || goto :query_steamwebhelper
+tasklist | findstr /i "steamwebhelper.exe" || goto :wait_for_steamwebhelper
 
 :: Allow a few seconds for steam to initialize/login
 timeout /t !init_time! /nobreak
