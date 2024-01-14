@@ -21,58 +21,61 @@ if not exist "!steam_path!\steam.exe" (
     exit
 )
 
-:StartScript
-:: kill steam if is running
+:: Kill steam if it's running
 tasklist | findstr /i "steam.exe" && taskkill /f /im "steam.exe"
 
-:: rename binary back to .exe as steam requires it to initialize, and ensure the script isn't blocked by both files existing.
+:: Restore binary back as steam requires it to initialize.
+call :BinaryDance "webhelper" "steamwebhelper.exe"
+
+:: Open steam and specified app
+start "" "!steam_path!\steam.exe" steam://rungameid/!app_id! --disable-background-networking --enable-low-end-device-mode --single-process -cef-single-process -skipinitialbootstrap -quicklogin -oldtraymenu -silent
+
+:: Only continue if steamwebhelper is running in case steam is updating
+:wait_for_steamwebhelper
+tasklist | findstr /i "steamwebhelper.exe" || goto :query_steamwebhelper
+
+:: Allow a few seconds for steam to initialize/login
+timeout /t !init_time! /nobreak
+
+:: Hide binary and kill the process
+call :BinaryDance "steamwebhelper.exe" "webhelper" "kill"
+
+:: Wait for steam to be closed and then rename webhelper back.
+:wait_to_fix
+timeout /t 10 /nobreak  
+tasklist | find /i "steam.exe" >nul 2>&1
+IF ERRORLEVEL 1 (
+    call :BinaryDance "webhelper" "steamwebhelper.exe"
+) ELSE (
+    goto wait_to_fix
+)
+exit/b
+
+:: Used for renaming steamwebhelper back and forth. 
+:: Delete the source if the destination already exists. 
+:: Also optionally kill the process.
+:: Parameters:
+::   %1 - Source filename 
+::   %2 - Destination filename
+::   %3 - "kill" to kill the process with the name %1 (OPTIONAL)
+:BinaryDance
 for %%a in ("cef.win7", "cef.win7x64") do (
-    set "bin=!steam_path!\bin\cef\%%~a\steamwebhelper.exe"
-    set "bin2=!steam_path!\bin\cef\%%~a\webhelper"
-    if exist "!bin2!" (
-        if exist "!bin!" (
-            del "!bin2!"
+    set "src=!steam_path!\bin\cef\%%~a\%~1"
+    set "dest=!steam_path!\bin\cef\%%~a\%~2"
+    if exist "!src!" (
+        if "%~3"=="kill" (
+            taskkill /f /im "%~1"
+            echo %~1 killed
+        )
+        if exist "!dest!" (
+            del "!src!"
+            echo %~1 deleted as %~2 already exists
+            echo.
         ) else (
-            ren "!bin2!" "steamwebhelper.exe"
+            move "!src!" "!dest!"
+            echo %~1 moved to %~2
+            echo.
         )
     )
 )
-
-:: open steam
-start "" "!steam_path!\steam.exe"  steam://rungameid/!app_id! --disable-background-networking --enable-low-end-device-mode --single-process -cef-single-process -skipinitialbootstrap -quicklogin -oldtraymenu -silent
-
-:: only continue if steamwebhelper is running in case steam is updating
-:query_steamwebhelper
-tasklist | findstr /i "steamwebhelper.exe" || goto :query_steamwebhelper
-
-:: allow a few seconds for steam to initialize/login
-timeout /t !init_time! /nobreak
-
-:: rename binary and kill the process
-for %%a in ("cef.win7", "cef.win7x64") do (
-    set "bin=!steam_path!\bin\cef\%%~a\steamwebhelper.exe"
-    if exist "!bin!" (
-	    taskkill /f /im "steamwebhelper.exe"
-        ren "!bin!" "webhelper"
-    )
-)
-
-:check_process
-taskkill /f /im "steamwebhelper.exe"
-timeout /t 10 /nobreak
-tasklist | find /i "steam.exe" >nul 2>&1
-IF ERRORLEVEL 1 (
-  GOTO fix
-) ELSE (
-  cls
-  GOTO check_process
-)
-
-:fix
-:: rename binary
-for %%a in ("cef.win7", "cef.win7x64") do (
-    set "bin2=!steam_path!\bin\cef\%%~a\webhelper"
-    if exist "!bin2!" (
-        ren "!bin2!" "steamwebhelper.exe"
-    )
-)
+exit/b
