@@ -3,7 +3,7 @@ setlocal EnableDelayedExpansion
 
 :: Configuration Section
 :: Steam directory
-set "steam_path=%SystemDrive%\Program Files (x86)\Stesam"
+set "steam_path=%SystemDrive%\Program Files (x86)\Steam"
 :: Game to launch
 set app_id=368260
 :: Time in seconds to wait for steam to start
